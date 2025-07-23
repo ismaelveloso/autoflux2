@@ -127,10 +127,13 @@ const LoginForm: React.FC = () => {
         <div className="mt-6 text-center">
           <button
             onClick={() => setIsLogin(!isLogin)}
+            onClick={() => {
+              setIsLogin(!isLogin);
               setError('');
               setEmail('');
               setPassword('');
               setNome('');
+            }}
             className="text-blue-600 hover:text-blue-700 text-sm"
           >
             {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Faça login'}
