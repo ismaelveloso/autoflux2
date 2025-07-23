@@ -24,7 +24,7 @@ const VeiculoDetails: React.FC<VeiculoDetailsProps> = ({ veiculo, onClose }) => 
         .from('servicos_aplicados')
         .select(`
           *,
-          servico:servicos(*)
+          servico:servicos(id, nome_servico, descricao, valor_base)
         `)
         .eq('veiculo_id', veiculo.id);
 
@@ -35,7 +35,7 @@ const VeiculoDetails: React.FC<VeiculoDetailsProps> = ({ veiculo, onClose }) => 
         .from('insumos_usados')
         .select(`
           *,
-          insumo:insumos(*)
+          insumo:insumos(id, nome_insumo, unidade_medida, valor_unitario, tipo)
         `)
         .eq('veiculo_id', veiculo.id);
 

@@ -1,11 +1,14 @@
 import React from 'react';
-import { Bell, Search } from 'lucide-react';
+import { Bell, Search, User } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 interface HeaderProps {
   title: string;
 }
 
 const Header: React.FC<HeaderProps> = ({ title }) => {
+  const { profile } = useAuth();
+  
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -23,10 +26,12 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
           
           <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
             <Bell size={20} />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              3
-            </span>
           </button>
+          
+          <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <User size={16} />
+            <span>{profile?.nome}</span>
+          </div>
         </div>
       </div>
     </header>

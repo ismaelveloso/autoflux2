@@ -7,10 +7,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false
+  }
+});
 
 // Auth helpers
 export const signUp = async (email: string, password: string, nome: string) => {
+  // Clear any existing session first
+  await supabase.auth.signOut();
+  
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -35,6 +44,9 @@ export const signUp = async (email: string, password: string, nome: string) => {
 };
 
 export const signIn = async (email: string, password: string) => {
+  // Clear any existing session first
+  await supabase.auth.signOut();
+  
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -50,7 +62,13 @@ export const signOut = async () => {
 };
 
 export const getCurrentUser = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error) {
+    console.error('Error getting current user:', error);
+    // If token is invalid, sign out
+    await supabase.auth.signOut();
+    return null;
+  }
   return user;
 };
 
@@ -63,4 +81,22 @@ export const getUserProfile = async (userId: string) => {
 
   if (error) throw error;
   return data;
+};
+
+// Helper function to get the last day of a month
+export const getLastDayOfMonth = (year: number, month: number): string => {
+  const lastDay = new Date(year, month, 0).getDate();
+  return `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
+};
+
+// Helper function to get current month date range
+export const getCurrentMonthRange = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  
+  const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+  const endDate = getLastDayOfMonth(year, month);
+  
+  return { startDate, endDate };
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Car, Users, Wrench, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase, getCurrentMonthRange } from '../../lib/supabase';
 
 interface DashboardStats {
   totalVeiculos: number;
@@ -21,6 +21,7 @@ const Dashboard: React.FC = () => {
     veiculosAguardandoPecas: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -28,6 +29,8 @@ const Dashboard: React.FC = () => {
 
   const loadDashboardData = async () => {
     try {
+      setError(null);
+      
       // Total de veículos
       const { count: totalVeiculos } = await supabase
         .from('veiculos')
@@ -45,12 +48,12 @@ const Dashboard: React.FC = () => {
         .select('*', { count: 'exact', head: true });
 
       // Faturamento do mês
-      const currentMonth = new Date().toISOString().slice(0, 7);
+      const { startDate, endDate } = getCurrentMonthRange();
       const { data: faturamento } = await supabase
         .from('financeiro')
         .select('valor_recebido')
-        .gte('data_pagamento', `${currentMonth}-01`)
-        .lt('data_pagamento', `${currentMonth}-32`);
+        .gte('data_pagamento', startDate)
+        .lte('data_pagamento', endDate);
 
       const faturamentoMes = faturamento?.reduce((sum, item) => sum + Number(item.valor_recebido), 0) || 0;
 
@@ -76,6 +79,7 @@ const Dashboard: React.FC = () => {
       });
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);
+      setError('Erro ao carregar dados do dashboard. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -89,6 +93,25 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="flex items-center space-x-3">
+          <AlertTriangle className="text-red-600" size={20} />
+          <div>
+            <h4 className="text-red-800 font-medium">Erro</h4>
+            <p className="text-red-700">{error}</p>
+            <button 
+              onClick={loadDashboardData}
+              className="mt-2 text-red-600 hover:text-red-800 underline"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const cards = [
     {
       title: 'Total de Veículos',

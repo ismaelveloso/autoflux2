@@ -24,7 +24,7 @@ const VeiculosList: React.FC = () => {
         .from('veiculos')
         .select(`
           *,
-          cliente:clientes(*)
+          cliente:clientes(id, nome, telefone, email)
         `)
         .order('created_at', { ascending: false });
 

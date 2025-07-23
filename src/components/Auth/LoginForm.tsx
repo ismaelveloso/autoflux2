@@ -19,10 +19,29 @@ const LoginForm: React.FC = () => {
       if (isLogin) {
         await signIn(email, password);
       } else {
+        if (!nome.trim()) {
+          throw new Error('Nome é obrigatório');
+        }
         await signUp(email, password, nome);
       }
     } catch (err: any) {
-      setError(err.message || 'Erro ao processar solicitação');
+      let errorMessage = 'Erro ao processar solicitação';
+      
+      if (err.message) {
+        if (err.message.includes('Invalid login credentials')) {
+          errorMessage = 'Email ou senha incorretos';
+        } else if (err.message.includes('User already registered')) {
+          errorMessage = 'Este email já está cadastrado';
+        } else if (err.message.includes('Password should be at least')) {
+          errorMessage = 'A senha deve ter pelo menos 6 caracteres';
+        } else if (err.message.includes('Invalid email')) {
+          errorMessage = 'Email inválido';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -53,6 +72,7 @@ const LoginForm: React.FC = () => {
                 onChange={(e) => setNome(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required={!isLogin}
+                placeholder="Digite seu nome completo"
               />
             </div>
           )}
@@ -67,6 +87,7 @@ const LoginForm: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
+              placeholder="Digite seu email"
             />
           </div>
 
@@ -80,7 +101,12 @@ const LoginForm: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
+              placeholder="Digite sua senha"
+              minLength={6}
             />
+            {!isLogin && (
+              <p className="text-xs text-gray-500 mt-1">Mínimo de 6 caracteres</p>
+            )}
           </div>
 
           {error && (
@@ -101,6 +127,10 @@ const LoginForm: React.FC = () => {
         <div className="mt-6 text-center">
           <button
             onClick={() => setIsLogin(!isLogin)}
+              setError('');
+              setEmail('');
+              setPassword('');
+              setNome('');
             className="text-blue-600 hover:text-blue-700 text-sm"
           >
             {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Faça login'}
