@@ -8,22 +8,25 @@ import VeiculosList from './components/Veiculos/VeiculosList';
 import ClientesList from './components/Clientes/ClientesList';
 
 const App: React.FC = () => {
-  const { user, profile, loading, error } = useAuth();
+  const { user, profile, loading, error, sessionChecked } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  if (loading) {
+  // Show loading while checking session
+  if (loading || !sessionChecked) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando AutoFlux...</p>
+          <p className="text-gray-600">
+            {loading ? 'Carregando AutoFlux...' : 'Verificando autenticação...'}
+          </p>
         </div>
       </div>
     );
   }
 
-  // Show error if there's an auth error
-  if (error && !user) {
+  // Show error if there's an auth error and no user
+  if (error && !user && sessionChecked) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
@@ -34,17 +37,30 @@ const App: React.FC = () => {
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Erro de Autenticação</h2>
           <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Tentar Novamente
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              Tentar Novamente
+            </button>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.reload();
+              }}
+              className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+            >
+              Fazer Login
+            </button>
+          </div>
         </div>
       </div>
     );
   }
-  if (!user || !profile) {
+  
+  // Show login form if no user or profile after session check
+  if ((!user || !profile) && sessionChecked) {
     return <LoginForm />;
   }
 

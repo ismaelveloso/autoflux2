@@ -62,14 +62,36 @@ export const signOut = async () => {
 };
 
 export const getCurrentUser = async () => {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error) {
-    console.error('Error getting current user:', error);
-    // If token is invalid, sign out
+  try {
+    // First check if we have a valid session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.error('No valid session:', sessionError);
+      await supabase.auth.signOut();
+      return null;
+    }
+
+    // If session exists, get user details
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      console.error('Error getting current user:', userError);
+      // If refresh token is invalid, clear session
+      if (userError.message.includes('refresh_token_not_found') || 
+          userError.message.includes('Invalid Refresh Token')) {
+        await supabase.auth.signOut();
+        return null;
+      }
+      throw userError;
+    }
+    
+    return user;
+  } catch (error) {
+    console.error('Auth error:', error);
     await supabase.auth.signOut();
     return null;
   }
-  return user;
 };
 
 export const getUserProfile = async (userId: string) => {

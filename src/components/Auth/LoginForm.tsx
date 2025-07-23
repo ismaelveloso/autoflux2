@@ -16,6 +16,9 @@ const LoginForm: React.FC = () => {
     setError('');
 
     try {
+      // Clear any existing session first
+      await supabase.auth.signOut();
+      
       if (isLogin) {
         await signIn(email, password);
       } else {
@@ -36,6 +39,9 @@ const LoginForm: React.FC = () => {
           errorMessage = 'A senha deve ter pelo menos 6 caracteres';
         } else if (err.message.includes('Invalid email')) {
           errorMessage = 'Email inválido';
+        } else if (err.message.includes('refresh_token_not_found') || 
+                   err.message.includes('Invalid Refresh Token')) {
+          errorMessage = 'Sessão expirada. Tente fazer login novamente.';
         } else {
           errorMessage = err.message;
         }

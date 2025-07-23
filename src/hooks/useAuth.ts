@@ -8,50 +8,107 @@ export const useAuth = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
+    let mounted = true;
+
+    const initializeAuth = async () => {
       try {
         setError(null);
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
         
-        if (currentUser) {
-          const userProfile = await getUserProfile(currentUser.id);
-          setProfile(userProfile);
+        // Check for existing session first
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          if (sessionError.message.includes('refresh_token_not_found') || 
+              sessionError.message.includes('Invalid Refresh Token')) {
+            await supabase.auth.signOut();
+            if (mounted) {
+              setUser(null);
+              setProfile(null);
+              setError('Sessão expirada. Faça login novamente.');
+            }
+            return;
+          }
+        }
+
+        if (session?.user) {
+          if (mounted) {
+            setUser(session.user);
+            try {
+              const userProfile = await getUserProfile(session.user.id);
+              if (mounted) {
+                setProfile(userProfile);
+              }
+            } catch (profileError) {
+              console.error('Error loading profile:', profileError);
+              if (mounted) {
+                setError('Erro ao carregar perfil do usuário.');
+              }
+            }
+          }
         } else {
-          setProfile(null);
+          if (mounted) {
+            setUser(null);
+            setProfile(null);
+          }
         }
       } catch (error) {
-        console.error('Error getting initial session:', error);
-        setError('Erro ao carregar sessão. Faça login novamente.');
-        setUser(null);
-        setProfile(null);
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setError('Erro ao inicializar autenticação. Faça login novamente.');
+          setUser(null);
+          setProfile(null);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          setSessionChecked(true);
+        }
       }
     };
 
-    getInitialSession();
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setError(null);
+        if (!mounted) return;
         
-        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-          if (!session) {
-            setUser(null);
-            setProfile(null);
-            setLoading(false);
-            return;
-          }
+        console.log('Auth state changed:', event, session?.user?.id);
+        
+        setError(null);
+
+        if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
         }
         
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
+        if (event === 'TOKEN_REFRESHED' && session?.user) {
+          setUser(session.user);
+          try {
+            const userProfile = await getUserProfile(session.user.id);
+            setProfile(userProfile);
+          } catch (error) {
+            console.error('Error getting user profile:', error);
+            if (error instanceof Error && 
+                (error.message.includes('refresh_token_not_found') || 
+                 error.message.includes('Invalid Refresh Token'))) {
+              await supabase.auth.signOut();
+              setUser(null);
+              setProfile(null);
+              setError('Sessão expirada. Faça login novamente.');
+            } else {
+              setError('Erro ao carregar perfil do usuário.');
+              setProfile(null);
+            }
+          }
+        } else if (session?.user) {
+          setUser(session.user);
           try {
             const userProfile = await getUserProfile(session.user.id);
             setProfile(userProfile);
@@ -60,7 +117,23 @@ export const useAuth = () => {
             setError('Erro ao carregar perfil do usuário.');
             setProfile(null);
           }
-        } else {
+        } else if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          // Handle sign in or user update
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            try {
+              const userProfile = await getUserProfile(session.user.id);
+              setProfile(userProfile);
+            } catch (error) {
+              console.error('Error getting user profile:', error);
+              setError('Erro ao carregar perfil do usuário.');
+              setProfile(null);
+            }
+          } else {
+            setProfile(null);
+          }
+        } else if (!session) {
+          setUser(null);
           setProfile(null);
         }
         
@@ -68,8 +141,11 @@ export const useAuth = () => {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  return { user, profile, loading, error };
+  return { user, profile, loading, error, sessionChecked };
 };

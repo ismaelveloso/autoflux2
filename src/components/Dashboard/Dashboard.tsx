@@ -31,6 +31,12 @@ const Dashboard: React.FC = () => {
     try {
       setError(null);
       
+      // Check if user is authenticated before making requests
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+      
       // Total de veículos
       const { count: totalVeiculos } = await supabase
         .from('veiculos')
